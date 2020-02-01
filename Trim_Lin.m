@@ -10,6 +10,7 @@ initialPosAct = 0;
 initialVelAct = 0;
 
 
+% Parámetros y variables para el modelo de simulink
 Vw=10;
 Tf=0.1;
 Ke=1.3717;
