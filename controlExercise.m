@@ -71,8 +71,10 @@ iu = [];        % No constrain over u
 Xlin = [X(1);U;0;X(2)];
 
 %Edit initial position and speed of actuator
-initalPosAct = U;
+initialPosAct = U;
 initialVelAct = 0;
+
+trimIntensity = X(2);
 
 
 [num,den] = linmod('Aerogen2019',Xlin,U)
@@ -108,8 +110,36 @@ grid on
 % Step Response
 f4 = figure(4)
 set(f4,'Position',[10 10 800 800])
+set(f4,'DefaultAxesFontSize',20)
 step(transferFunction)
 grid on
+hold on
+% Compare the step response of linear system with real system: 
+% for this task a new simulink model is generated, all integrators are set
+% to its trim point value and an unitary step is generated at t=0 of the
+% simulation. 
+
+simOut = sim('Aerogen2019Step','OutputSaveName','yout');
+outputs = simOut.get('yout');
+% Once the simulation is done the result si plotted against the step
+% response of the linear system.
+
+plot(outputs(:,2),outputs(:,1),'r')
+legend({'linear','real'},'FontSize',20)
+
+
+%% CONTROLLER DESIGN 1
+% the first controller is calculated using the Ziegler-Nichols Method N 1,
+% first the data from the step response of the linear system is gadered and
+% from this data L, and T are calculated.
+
+
+
+
+
+
+%% CONTROLLER DESIGN 2
+
 
 
 
