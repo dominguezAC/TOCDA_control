@@ -160,28 +160,34 @@ T = TplusL - L;
 % dy_inflex*x + c; 
 
 % Plot the scheme...
+f5 = figure(5);
+set(f5,'Position',[10 10 800 800]);
+set(f5,'DefaultAxesFontSize',20);
 mytime = linspace(L,T+L);
-plot(mytime,mytime*dy_inflex + c) % tangent
+plot(mytime,mytime*dy_inflex + c, 'LineWidth',3) % tangent
 
 hold on
-plot(t_step,y_step) % actual state
-plot(t_inflex,y_inflex,'o') % inflexion poin
-plot(t_step,ones(1,length(t_step))*k,'--')
+plot(t_step,y_step, 'LineWidth',3) % actual state
+plot(t_inflex,y_inflex,'o', 'LineWidth',12, 'LineWidth',12) % inflexion poin
+plot(t_step,ones(1,length(t_step))*k,'--', 'LineWidth',3)
 grid on
-
+legend('tangent','step response','inflexion point','Static gain')
+title 'Ziegler-Nichols Method scheme'
+xlabel 't'
+ylabel 'y'
 
 % Calculate the gains for PID controller with the rules propoposed by the 
 % firts method: 
-K_p = 1.2*T/L;
+Kp = 1.2*T/L;
 T_i = 2*L;
 T_d = 0.5*L;
 
-K_i = K_p/T_i;
-K_d = T_d*K_p;
+Ki = Kp/T_i;
+Kd = T_d*Kp;
 
 % These gains were found to not perform well, modified are:
-K_i = K_i/10;
-K_d = K_d*10;
+Ki = Ki/10;
+Kd = Kd*10;
 % To test this gains run Aerogen2019Controller.slx
 
 
@@ -195,29 +201,32 @@ K_d = K_d*10;
 % taks a simulink model is generated called Aerogen2019ControllerStep. In
 % this case the Integral Square Error is evaluated:
 
-%%vector = [K_p K_i K_d];
-
 
 in = Simulink.SimulationInput('Aerogen2019ControllerStep');
-t = (0:0.01:5)';
-in.setExternalInput([t,ones(size(t))]);
-simOut = sim(in);
-ISE = sum(simOut.yout.^2)
-%%
-
-t = (0:0.01:10)';
-ds{1} = timeseries(5*ones(size(t)),t);
-in = Simulink.SimulationInput('Aerogen2019ControllerStep');
-in = in.setBlockParameter('Aerogen2019ControllerStep/Constant','Value','5');
+in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Kd','Value',string(Kd));
+in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Kp','Value',string(Kp));
+in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Ki','Value',string(Ki));
+%in = in.setBlockParameter('Aerogen2019ControllerStep/Constant1','value',string(50));
 out = sim(in);
+ISE = sum(out.yout.^2)
+IAE = sum(abs(out.yout))
 
 %%
-function [ISE] = func2min(x)
+function [IAE] = func2min(x)
+    kp = x(1);
+    kd = x(2);
+    ki = x(3);
+    
     in = Simulink.SimulationInput('Aerogen2019ControllerStep');
-    in.setExternalInput(x);
-    simOut = sim('Aerogen2019ControllerStep','OutputSaveName','yout',in);
-    outputs = simOut.get('yout');
-    ISE = outputs(1);
+    in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Kd','Value',string(Kd));
+    in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Kp','Value',string(Kp));
+    in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Ki','Value',string(Ki));
+    %in = in.setBlockParameter('Aerogen2019ControllerStep/Constant1','value',string(50));
+    out = sim(in);
+    %ISE = sum(out.yout.^2);
+    IAE = sum(abs(out.yout));
+    
+    
 end
 
 
