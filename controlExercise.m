@@ -208,7 +208,7 @@ ISE = sum(simOut.yout.^2)
 t = (0:0.01:10)';
 ds{1} = timeseries(5*ones(size(t)),t);
 in = Simulink.SimulationInput('Aerogen2019ControllerStep');
-in = in.setBlockParameter('Aerogen2019ControllerStep/P','Value','10');
+in = in.setBlockParameter('Aerogen2019ControllerStep/Constant','Value','5');
 out = sim(in);
 
 %%
