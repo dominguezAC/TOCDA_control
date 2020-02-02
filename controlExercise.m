@@ -90,26 +90,26 @@ poles = pole(transferFunction);
 
 
 % Locus of roots of the system:
-f1 = figure(1)
-set(f1,'Position',[10 10 800 800])
+f1 = figure(1);
+set(f1,'Position',[10 10 800 800]);
 rlocus(transferFunction)
 grid on
 
 % Bode 
-f2 = figure(2)
-set(f2,'Position',[10 10 800 800])
+f2 = figure(2);
+set(f2,'Position',[10 10 800 800]);
 bode(transferFunction)
 grid on
 
 % Nyquist
-f3 = figure(3)
-set(f3,'Position',[10 10 800 800])
+f3 = figure(3);
+set(f3,'Position',[10 10 800 800]);
 nyquist(transferFunction)
 grid on
 
 % Step Response
-f4 = figure(4)
-set(f4,'Position',[10 10 800 800])
+f4 = figure(4);
+set(f4,'Position',[10 10 800 800]);
 set(f4,'DefaultAxesFontSize',20)
 step(transferFunction)
 grid on
@@ -184,7 +184,7 @@ T_d = 0.5*L;
 
 Ki = Kp/T_i;
 Kd = T_d*Kp;
-
+%%
 % These gains were found to not perform well, modified are:
 Ki = Ki/10;
 Kd = Kd*10;
@@ -199,37 +199,27 @@ Kd = Kd*10;
 % For the second controller a unitary step in wind speed is aplied and the
 % gains are set to minimize the error due to this perturbation. For this
 % taks a simulink model is generated called Aerogen2019ControllerStep. In
-% this case the Integral Square Error is evaluated:
+% this case the Integral Absolute Error is evaluated:
+
+options = optimoptions('fminunc');
+options = optimoptions(options,'Algorithm','quasi-newton'); %'trust-region-dogleg', 'quasi-newton'
+options = optimoptions(options,'HessUpdate','bfgs'); %'dfp','bfgs' 'steepdesc'
+options = optimoptions(options,'MaxFunctionEvaluations',1000);
+options = optimoptions(options, 'Display','iter');
+options = optimoptions(options, 'PlotFcn','optimplotfval');
 
 
-in = Simulink.SimulationInput('Aerogen2019ControllerStep');
-in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Kd','Value',string(Kd));
-in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Kp','Value',string(Kp));
-in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Ki','Value',string(Ki));
-%in = in.setBlockParameter('Aerogen2019ControllerStep/Constant1','value',string(50));
-out = sim(in);
-ISE = sum(out.yout.^2)
-IAE = sum(abs(out.yout))
+[F,fval,exitflag,output,grad,hessian] = fminunc(@func2min,[Kp Kd Ki],options);
 
-%%
-function [IAE] = func2min(x)
-    kp = x(1);
-    kd = x(2);
-    ki = x(3);
+
+%% Compare
+
+
+simOut = sim('Aerogen2019Controller','OutputSaveName','yout');
+outputs = simOut.get('yout');
+
     
-    in = Simulink.SimulationInput('Aerogen2019ControllerStep');
-    in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Kd','Value',string(Kd));
-    in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Kp','Value',string(Kp));
-    in = in.setBlockParameter('Aerogen2019ControllerStep/PID_Ki','Value',string(Ki));
-    %in = in.setBlockParameter('Aerogen2019ControllerStep/Constant1','value',string(50));
-    out = sim(in);
-    %ISE = sum(out.yout.^2);
-    IAE = sum(abs(out.yout));
-    
-    
-end
-
-
+    plot(outputs)
 
 
 
