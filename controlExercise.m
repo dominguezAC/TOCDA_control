@@ -62,7 +62,7 @@ iu = [];        % No constrain over u
 
 
 % Find the triming point on the condition especified above
-[X,U,Y,DX,options] = trim('Aerogen2019NoActuator',X0,U0,Y0,ix,iu,iy)
+[X,U,Y,DX,options] = trim('Aerogen2019NoActuator',X0,U0,Y0,ix,iu,iy);
 
 
 %% LINEARIZE THE PLANT
@@ -77,7 +77,7 @@ initialVelAct = 0;
 trimIntensity = X(2);
 
 
-[num,den] = linmod('Aerogen2019',Xlin,U)
+[num,den] = linmod('Aerogen2019',Xlin,U);
 %[num,den] = linmod('Aerogen2019NoActuator',X,U)
 
 
@@ -133,12 +133,93 @@ legend({'linear','real'},'FontSize',20)
 % first the data from the step response of the linear system is gadered and
 % from this data L, and T are calculated.
 
+[y_step,t_step,x_step] = step(transferFunction);
+
+
+dydt = gradient(y_step(:))./gradient(t_step(:));
+d2ydt2 = gradient(dydt(:))./gradient(t_step(:));
+
+signs = sign(d2ydt2);
+[~,c] = ismember(-1,signs); % finds last index of -1 (positive hess)
+
+Ay = d2ydt2(c-1);     At = t_step(c-1);
+By = d2ydt2(c);    Bt = t_step(c);
+
+deltaD2ydt2 = Ay-By;
+deltaT = Bt-At;
+
+t_inflex = t_step(c-1) + deltaT*Ay/deltaD2ydt2;
+y_inflex = spline(t_step,y_step,t_inflex);
+dy_inflex = spline(t_step,dydt,t_inflex); % find the derivate of the funciton in the inflexion
+c = y_inflex - t_inflex*dy_inflex;
+k = y_step(end);
+L = -c/dy_inflex;
+TplusL = (k-c)/dy_inflex;
+T = TplusL - L;
+% the tangent of the curve at the inflexion has the ecuation y =
+% dy_inflex*x + c; 
+
+% Plot the scheme...
+mytime = linspace(L,T+L);
+plot(mytime,mytime*dy_inflex + c) % tangent
+
+hold on
+plot(t_step,y_step) % actual state
+plot(t_inflex,y_inflex,'o') % inflexion poin
+plot(t_step,ones(1,length(t_step))*k,'--')
+grid on
+
+
+% Calculate the gains for PID controller with the rules propoposed by the 
+% firts method: 
+K_p = 1.2*T/L;
+T_i = 2*L;
+T_d = 0.5*L;
+
+K_i = K_p/T_i;
+K_d = T_d*K_p;
+
+% These gains were found to not perform well, modified are:
+K_i = K_i/10;
+K_d = K_d*10;
+% To test this gains run Aerogen2019Controller.slx
 
 
 
 
 
 %% CONTROLLER DESIGN 2
+
+% For the second controller a unitary step in wind speed is aplied and the
+% gains are set to minimize the error due to this perturbation. For this
+% taks a simulink model is generated called Aerogen2019ControllerStep. In
+% this case the Integral Square Error is evaluated:
+
+%%vector = [K_p K_i K_d];
+
+
+in = Simulink.SimulationInput('Aerogen2019ControllerStep');
+t = (0:0.01:5)';
+in.setExternalInput([t,ones(size(t))]);
+simOut = sim(in);
+ISE = sum(simOut.yout.^2)
+%%
+
+t = (0:0.01:10)';
+ds{1} = timeseries(5*ones(size(t)),t);
+in = Simulink.SimulationInput('Aerogen2019ControllerStep');
+in = in.setBlockParameter('Aerogen2019ControllerStep/P','Value','10');
+out = sim(in);
+
+%%
+function [ISE] = func2min(x)
+    in = Simulink.SimulationInput('Aerogen2019ControllerStep');
+    in.setExternalInput(x);
+    simOut = sim('Aerogen2019ControllerStep','OutputSaveName','yout',in);
+    outputs = simOut.get('yout');
+    ISE = outputs(1);
+end
+
 
 
 
